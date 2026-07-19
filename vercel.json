@@ -21,7 +21,7 @@
         }
     ],
     "env": {
-        "MONGODB_URI": "your_mongodb_atlas_connection_string",
+        "MONGODB_URI": "mongodb+srv://Kwesi:King@cluster0.bm4rexr.mongodb.net/?appName=Cluster0",
         "ADMIN_PASSWORD": "kingkwesi",
         "JWT_SECRET": "heis"
     }
