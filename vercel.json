@@ -1,28 +1,9 @@
 {
     "version": 2,
-    "builds": [
+    "rewrites": [
         {
-            "src": "index.html",
-            "use": "@vercel/static"
-        },
-        {
-            "src": "api/*.js",
-            "use": "@vercel/node"
+            "source": "/api/(.*)",
+            "destination": "https://vcf-backend-production.up.railway.app/api/$1"
         }
-    ],
-    "routes": [
-        {
-            "src": "/api/(.*)",
-            "dest": "/api/$1"
-        },
-        {
-            "src": "/(.*)",
-            "dest": "/index.html"
-        }
-    ],
-    "env": {
-        "MONGODB_URI": "mongodb+srv://Kwesi:King@cluster0.bm4rexr.mongodb.net/?appName=Cluster0",
-        "ADMIN_PASSWORD": "kingkwesi",
-        "JWT_SECRET": "heis"
-    }
-} 
+    ]
+}
