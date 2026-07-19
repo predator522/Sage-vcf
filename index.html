@@ -200,13 +200,6 @@
             background: var(--primary);
             color: white;
         }
-        .btn-whatsapp {
-            background: var(--whatsapp);
-            color: white;
-        }
-        .btn-whatsapp:hover {
-            background: #128C7E;
-        }
         .btn-sm {
             padding: 8px 18px;
             font-size: 0.9rem;
@@ -459,24 +452,6 @@
         .hidden {
             display: none !important;
         }
-        .loading-spinner {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            border-top-color: #fff;
-            animation: spin 1s ease-in-out infinite;
-        }
-        @keyframes spin {
-            to {
-                transform: rotate(360deg);
-            }
-        }
-        .btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
         @media (max-width: 860px) {
             .grid-2 {
                 grid-template-columns: 1fr;
@@ -526,172 +501,89 @@
 
     <script>
         // ============================================================
-        // CONFIGURATION - Set these in Vercel Environment Variables
+        // CONFIGURATION - Update with your Railway URL
         // ============================================================
         const CONFIG = {
-            // This will be replaced by Vercel environment variables
-            MONGODB_URI: process?.env?.MONGODB_URI || 'mongodb://localhost:27017/sagevcf',
-            ADMIN_PASSWORD: process?.env?.ADMIN_PASSWORD || 'admin123',
-            JWT_SECRET: process?.env?.JWT_SECRET || 'your-secret-key',
-            
-            // For Vercel, we'll use a serverless function approach
-            // The API will be at /api/*
-            API_BASE: '/api'
+            API_URL: 'https://your-railway-app.up.railway.app/api', // Replace with your Railway URL
+            ADMIN_PASSWORD: 'admin123'
         };
 
         // ============================================================
-        // MONGODB ATLAS DATA API CLIENT
+        // API CLIENT
         // ============================================================
-        class MongoDBClient {
-            constructor() {
-                this.connected = false;
-                this.db = null;
-                this.useLocalFallback = false;
-            }
-
-            async connect() {
-                try {
-                    // Try to connect to MongoDB Atlas via Data API
-                    const response = await fetch(`${CONFIG.API_BASE}/health`, {
-                        method: 'GET',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        }
-                    });
-
-                    if (response.ok) {
-                        this.connected = true;
-                        this.useLocalFallback = false;
-                        updateDbStatus(true);
-                        toast('Connected to MongoDB Atlas', 'fa-check-circle', '#0b8a5e');
-                        return this;
-                    }
-
-                    throw new Error('API not available');
-                } catch (error) {
-                    console.warn('MongoDB connection failed, using local storage:', error);
-                    this.useLocalFallback = true;
-                    this.connected = true;
-                    updateDbStatus(false);
-                    toast('Using local storage (offline mode)', 'fa-exclamation-triangle', '#f59e0b');
-                    return this;
-                }
-            }
-
-            async callAPI(endpoint, method = 'POST', data = null) {
-                if (this.useLocalFallback) {
-                    return this.localStorageHandler(endpoint, method, data);
-                }
-
-                try {
-                    const response = await fetch(`${CONFIG.API_BASE}${endpoint}`, {
-                        method: method,
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: data ? JSON.stringify(data) : undefined
-                    });
-
-                    if (!response.ok) {
-                        throw new Error(`API error: ${response.status}`);
-                    }
-
-                    return await response.json();
-                } catch (error) {
-                    console.error('API call failed:', error);
-                    // Fallback to localStorage
-                    this.useLocalFallback = true;
-                    return this.localStorageHandler(endpoint, method, data);
-                }
-            }
-
-            localStorageHandler(endpoint, method, data) {
-                // Local storage fallback
-                const collection = endpoint.split('/')[1] || 'sessions';
-                const key = `sage_${collection}`;
-
-                switch (method) {
-                    case 'GET':
-                        return JSON.parse(localStorage.getItem(key) || '[]');
-                    case 'POST':
-                        const items = JSON.parse(localStorage.getItem(key) || '[]');
-                        items.push(data);
-                        localStorage.setItem(key, JSON.stringify(items));
-                        return { insertedId: data._id || data.id };
-                    case 'PUT':
-                        const existing = JSON.parse(localStorage.getItem(key) || '[]');
-                        const index = existing.findIndex(item => item.id === data.id);
-                        if (index !== -1) {
-                            existing[index] = { ...existing[index], ...data.update };
-                            localStorage.setItem(key, JSON.stringify(existing));
-                            return { modifiedCount: 1 };
-                        }
-                        return { modifiedCount: 0 };
-                    case 'DELETE':
-                        let itemsToDelete = JSON.parse(localStorage.getItem(key) || '[]');
-                        itemsToDelete = itemsToDelete.filter(item => item.id !== data.id);
-                        localStorage.setItem(key, JSON.stringify(itemsToDelete));
-                        return { deletedCount: 1 };
-                    default:
-                        return null;
-                }
-            }
-
-            collection(name) {
-                return {
-                    find: async (filter = {}) => {
-                        const result = await this.callAPI(`/${name}`, 'GET');
-                        if (filter.sessionId) {
-                            return result.filter(d => d.sessionId === filter.sessionId);
-                        }
-                        if (filter.status) {
-                            return result.filter(d => d.status === filter.status);
-                        }
-                        return result;
-                    },
-                    insertOne: async (document) => {
-                        return await this.callAPI(`/${name}`, 'POST', document);
-                    },
-                    updateOne: async (filter, update) => {
-                        return await this.callAPI(`/${name}`, 'PUT', { ...filter, update });
-                    },
-                    deleteOne: async (filter) => {
-                        return await this.callAPI(`/${name}`, 'DELETE', filter);
-                    },
-                    deleteMany: async (filter) => {
-                        const items = await this.find(filter);
-                        let deleted = 0;
-                        for (const item of items) {
-                            await this.deleteOne({ id: item.id });
-                            deleted++;
-                        }
-                        return { deletedCount: deleted };
+        const API = {
+            async request(endpoint, method = 'GET', data = null) {
+                const url = `${CONFIG.API_URL}${endpoint}`;
+                const options = {
+                    method,
+                    headers: {
+                        'Content-Type': 'application/json',
                     }
                 };
-            }
-        }
+                if (data) {
+                    options.body = JSON.stringify(data);
+                }
+                
+                try {
+                    const response = await fetch(url, options);
+                    const result = await response.json();
+                    if (!response.ok) {
+                        throw new Error(result.error || 'Request failed');
+                    }
+                    return result;
+                } catch (error) {
+                    console.error('API Error:', error);
+                    throw error;
+                }
+            },
 
-        // ============================================================
-        // DATABASE CLIENT INSTANCE
-        // ============================================================
-        let dbClient = null;
+            // Sessions
+            getSessions() {
+                return this.request('/sessions');
+            },
+            getSession(sessionId) {
+                return this.request(`/sessions/${sessionId}`);
+            },
+            createSession(sessionData) {
+                return this.request('/sessions', 'POST', sessionData);
+            },
+            updateSession(sessionId, data) {
+                return this.request(`/sessions/${sessionId}`, 'PUT', data);
+            },
+            deleteSession(sessionId) {
+                return this.request(`/sessions/${sessionId}`, 'DELETE');
+            },
 
-        async function initializeDatabase() {
-            dbClient = new MongoDBClient();
-            await dbClient.connect();
-            return dbClient;
-        }
+            // Participants
+            getParticipants(sessionId) {
+                return this.request(`/participants/${sessionId}`);
+            },
+            addParticipant(data) {
+                return this.request('/participants', 'POST', data);
+            },
+            deleteParticipant(sessionId, participantId) {
+                return this.request(`/participants/${sessionId}/${participantId}`, 'DELETE');
+            },
 
-        function updateDbStatus(connected) {
-            const dot = document.getElementById('dbStatusDot');
-            const text = document.getElementById('dbStatusText');
-            if (dot) {
-                dot.className = `dot ${connected ? 'online' : 'offline'}`;
+            // Groups
+            getGroups() {
+                return this.request('/groups');
+            },
+            getGroup(sessionId) {
+                return this.request(`/groups/${sessionId}`);
+            },
+            createGroup(data) {
+                return this.request('/groups', 'POST', data);
+            },
+
+            // Admin
+            verifyAdmin(password) {
+                return this.request('/admin/verify', 'POST', { password });
+            },
+            getStats() {
+                return this.request('/admin/stats');
             }
-            if (text) {
-                text.textContent = connected ? 'MongoDB Connected' : 'Offline (Local)';
-            }
-        }
+        };
 
         // ============================================================
         // APPLICATION STATE
@@ -699,6 +591,9 @@
         let currentPage = 'home';
         let currentSessionId = null;
         let darkMode = localStorage.getItem('sage_dark') === 'true';
+        let allSessions = [];
+        let allGroups = [];
+        let allParticipants = {};
 
         if (darkMode) document.documentElement.setAttribute('data-theme', 'dark');
 
@@ -728,77 +623,45 @@
         }
         window.closeModal = closeModal;
 
-        // ============================================================
-        // DATABASE WRAPPER FUNCTIONS
-        // ============================================================
-        const DB = {
-            async getSessions() {
-                const sessions = await dbClient.collection('sessions').find();
-                return sessions;
-            },
-
-            async getSession(sessionId) {
-                const sessions = await dbClient.collection('sessions').find({ sessionId });
-                return sessions[0] || null;
-            },
-
-            async createSession(sessionData) {
-                const result = await dbClient.collection('sessions').insertOne(sessionData);
-                return result;
-            },
-
-            async updateSession(sessionId, updates) {
-                const result = await dbClient.collection('sessions').updateOne(
-                    { id: sessionId },
-                    { $set: updates }
-                );
-                return result;
-            },
-
-            async deleteSession(sessionId) {
-                await dbClient.collection('sessions').deleteOne({ id: sessionId });
-                await dbClient.collection('participants').deleteMany({ sessionId });
-                return true;
-            },
-
-            async getParticipants(sessionId) {
-                const participants = await dbClient.collection('participants').find({ sessionId });
-                return participants;
-            },
-
-            async addParticipant(participantData) {
-                const result = await dbClient.collection('participants').insertOne(participantData);
-                return result;
-            },
-
-            async removeParticipant(sessionId, participantId) {
-                const result = await dbClient.collection('participants').deleteOne({ _id: participantId, sessionId });
-                return result;
-            },
-
-            async getGroups() {
-                const groups = await dbClient.collection('groups').find();
-                return groups;
-            },
-
-            async createGroup(groupData) {
-                const result = await dbClient.collection('groups').insertOne(groupData);
-                return result;
-            },
-
-            async verifyAdminPassword(password) {
-                const admins = await dbClient.collection('admins').find({ username: 'admin' });
-                if (admins.length === 0) {
-                    await dbClient.collection('admins').insertOne({
-                        username: 'admin',
-                        password: CONFIG.ADMIN_PASSWORD,
-                        createdAt: new Date().toISOString()
-                    });
-                    return password === CONFIG.ADMIN_PASSWORD;
-                }
-                return admins[0].password === password;
+        function updateDbStatus(connected) {
+            const dot = document.getElementById('dbStatusDot');
+            const text = document.getElementById('dbStatusText');
+            if (dot) {
+                dot.className = `dot ${connected ? 'online' : 'offline'}`;
             }
-        };
+            if (text) {
+                text.textContent = connected ? 'MongoDB Connected' : 'Offline';
+            }
+        }
+
+        // ============================================================
+        // DATA LOADING
+        // ============================================================
+        async function loadAllData() {
+            try {
+                const [sessions, groups] = await Promise.all([
+                    API.getSessions(),
+                    API.getGroups()
+                ]);
+                
+                allSessions = sessions;
+                allGroups = groups;
+                
+                // Load participants for each session
+                for (const session of sessions) {
+                    const participants = await API.getParticipants(session.sessionId);
+                    allParticipants[session.sessionId] = participants;
+                }
+                
+                updateDbStatus(true);
+                return true;
+            } catch (error) {
+                console.error('Failed to load data:', error);
+                updateDbStatus(false);
+                toast('Failed to connect to server. Please check your connection.', 'fa-exclamation-triangle', '#e11d48');
+                return false;
+            }
+        }
 
         // ============================================================
         // RENDER ENGINE
@@ -811,9 +674,11 @@
             const container = document.getElementById('pageContent');
 
             try {
+                await loadAllData();
+                
                 switch (page) {
                     case 'home':
-                        container.innerHTML = await renderHome();
+                        container.innerHTML = renderHome();
                         break;
                     case 'create':
                         container.innerHTML = renderCreate();
@@ -831,34 +696,27 @@
                         container.innerHTML = await renderAdmin();
                         break;
                     default:
-                        container.innerHTML = await renderHome();
+                        container.innerHTML = renderHome();
                 }
             } catch (error) {
-                container.innerHTML = `<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Error loading page: ${error.message}</p></div>`;
+                container.innerHTML =
+                    `<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Error: ${error.message}</p></div>`;
             }
             attachEvents();
         }
 
         // ----- HOME PAGE -----
-        async function renderHome() {
-            const sessions = await DB.getSessions();
-            const groups = await DB.getGroups();
-
-            // Get participant counts
-            const sessionsWithCounts = await Promise.all(sessions.map(async (s) => {
-                const participants = await DB.getParticipants(s.sessionId);
-                return { ...s, participantCount: participants.length };
-            }));
-
-            let cards = sessionsWithCounts.map(s => {
+        function renderHome() {
+            let cards = allSessions.map(s => {
+                const participants = allParticipants[s.sessionId] || [];
                 const closed = s.status === 'closed';
-                const group = groups.find(g => g.sessionId === s.sessionId);
+                const group = allGroups.find(g => g.sessionId === s.sessionId);
 
                 return `<div class="card" style="padding:16px;">
                             <div style="display:flex;justify-content:space-between;align-items:start;flex-wrap:wrap;gap:8px;">
                                 <div>
                                     <strong>${s.name}</strong>
-                                    <div class="text-secondary" style="font-size:0.85rem;">${s.organizer} · ${s.participantCount || 0}/${s.target}</div>
+                                    <div class="text-secondary" style="font-size:0.85rem;">${s.organizer} · ${participants.length}/${s.target}</div>
                                 </div>
                                 <span class="badge ${closed ? 'closed' : ''}">${closed ? 'CLOSED' : 'OPEN'}</span>
                             </div>
@@ -919,20 +777,19 @@
 
         // ----- DASHBOARD -----
         async function renderDashboard(sessionId) {
-            const session = await DB.getSession(sessionId);
+            const session = allSessions.find(s => s.sessionId === sessionId);
             if (!session) return `<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Session not found</p></div>`;
 
-            const participants = await DB.getParticipants(sessionId);
-            const groups = await DB.getGroups();
-            const group = groups.find(g => g.sessionId === sessionId);
+            const participants = allParticipants[sessionId] || [];
+            const group = allGroups.find(g => g.sessionId === sessionId);
             const closed = session.status === 'closed';
             const progress = Math.min(100, (participants.length / session.target) * 100);
 
-            let rows = participants.map((p, i) =>
+            let rows = participants.map((p) =>
                 `<tr>
                             <td>${p.fullName}</td>
                             <td>${p.country || 'N/A'}</td>
-                            <td>${new Date(p.joined).toLocaleString()}</td>
+                            <td>${new Date(p.joinedAt).toLocaleString()}</td>
                             <td><button class="icon-btn" data-action="removeP" data-id="${p._id}"><i class="fas fa-user-minus"></i></button></td>
                         </tr>`
             ).join('');
@@ -978,21 +835,20 @@
 
         // ----- ADMIN PANEL -----
         async function renderAdmin() {
-            const sessions = await DB.getSessions();
-            const groups = await DB.getGroups();
-
-            let stats = sessions.reduce((acc, s) => {
-                acc.total += s.participantCount || 0;
+            let stats = allSessions.reduce((acc, s) => {
+                const participants = allParticipants[s.sessionId] || [];
+                acc.total += participants.length;
                 acc.sessions += 1;
                 return acc;
             }, { total: 0, sessions: 0 });
 
-            let rows = sessions.map(s => {
-                const g = groups.find(gr => gr.sessionId === s.sessionId);
+            let rows = allSessions.map(s => {
+                const participants = allParticipants[s.sessionId] || [];
+                const g = allGroups.find(gr => gr.sessionId === s.sessionId);
                 return `<tr>
                             <td><code>${s.sessionId}</code></td>
                             <td>${s.name}</td>
-                            <td>${s.participantCount || 0}/${s.target}</td>
+                            <td>${participants.length}/${s.target}</td>
                             <td><span class="badge ${s.status === 'closed' ? 'closed' : ''}" style="font-size:0.7rem;">${s.status || 'open'}</span></td>
                             <td>${g ? `<i class="fab fa-whatsapp" style="color:var(--whatsapp);"></i>` : '-'}</td>
                             <td><button class="icon-btn" data-action="adminDelete" data-id="${s.sessionId}"><i class="fas fa-trash"></i></button></td>
@@ -1034,12 +890,17 @@
                     if (page === 'admin') {
                         const pwd = prompt('Enter admin password:');
                         if (!pwd) return;
-                        const isValid = await DB.verifyAdminPassword(pwd);
-                        if (!isValid) {
-                            toast('Wrong password', 'fa-times-circle', '#e11d48');
+                        try {
+                            const result = await API.verifyAdmin(pwd);
+                            if (!result.valid) {
+                                toast('Wrong password', 'fa-times-circle', '#e11d48');
+                                return;
+                            }
+                            toast('Authenticated successfully', 'fa-check', '#0b8a5e');
+                        } catch (error) {
+                            toast('Authentication failed', 'fa-times-circle', '#e11d48');
                             return;
                         }
-                        toast('Authenticated successfully', 'fa-check', '#0b8a5e');
                     }
                     await render(page);
                 });
@@ -1078,28 +939,21 @@
 
                     try {
                         const sessionId = genId();
-                        const sessionData = {
-                            _id: sessionId,
-                            id: sessionId,
-                            sessionId: sessionId,
+                        
+                        // Create session
+                        await API.createSession({
+                            sessionId,
                             name,
                             organizer: org,
                             target,
-                            description: desc,
-                            status: 'open',
-                            participantCount: 0,
-                            created: new Date().toISOString()
-                        };
+                            description: desc
+                        });
 
-                        await DB.createSession(sessionData);
-
-                        await DB.createGroup({
-                            _id: 'group_' + sessionId,
-                            id: 'group_' + sessionId,
-                            sessionId: sessionId,
+                        // Create group
+                        await API.createGroup({
+                            sessionId,
                             name: groupName,
-                            link: whatsapp,
-                            created: new Date().toISOString()
+                            link: whatsapp
                         });
 
                         toast(`Session ${sessionId} created! Share the link with participants.`, 'fa-check-circle',
@@ -1115,9 +969,9 @@
             document.querySelectorAll('[data-action="join"]').forEach(b => {
                 b.addEventListener('click', async () => {
                     const id = b.dataset.id;
-                    const session = await DB.getSession(id);
+                    const session = allSessions.find(s => s.sessionId === id);
                     if (!session) return;
-                    const participants = await DB.getParticipants(id);
+                    const participants = allParticipants[id] || [];
                     if (participants.length >= session.target || session.status === 'closed') {
                         toast('Session is closed', 'fa-times-circle', '#e11d48');
                         return;
@@ -1137,16 +991,20 @@
                 b.addEventListener('click', async () => {
                     const id = b.dataset.id;
                     if (confirm('Delete this session and all data?')) {
-                        await DB.deleteSession(id);
-                        toast('Session deleted', 'fa-trash', '#e11d48');
-                        await render('home');
+                        try {
+                            await API.deleteSession(id);
+                            toast('Session deleted', 'fa-trash', '#e11d48');
+                            await render('home');
+                        } catch (error) {
+                            toast('Error deleting session: ' + error.message, 'fa-times-circle', '#e11d48');
+                        }
                     }
                 });
             });
 
             // ----- DASHBOARD ACTIONS -----
-            document.getElementById('exportVcfBtn')?.addEventListener('click', async () => {
-                const participants = await DB.getParticipants(currentSessionId);
+            document.getElementById('exportVcfBtn')?.addEventListener('click', () => {
+                const participants = allParticipants[currentSessionId] || [];
                 if (!participants.length) {
                     toast('No participants to export', 'fa-info-circle', '#f59e0b');
                     return;
@@ -1165,11 +1023,12 @@
             });
 
             document.getElementById('closeSessionBtn')?.addEventListener('click', async () => {
-                const session = await DB.getSession(currentSessionId);
-                if (session) {
-                    await DB.updateSession(currentSessionId, { status: 'closed' });
+                try {
+                    await API.updateSession(currentSessionId, { status: 'closed' });
                     toast('Session closed manually', 'fa-lock', '#e11d48');
                     await render('dashboard');
+                } catch (error) {
+                    toast('Error closing session: ' + error.message, 'fa-times-circle', '#e11d48');
                 }
             });
 
@@ -1180,9 +1039,8 @@
                 ).catch(() => {});
             });
 
-            document.getElementById('copyGroupLink')?.addEventListener('click', async () => {
-                const groups = await DB.getGroups();
-                const group = groups.find(g => g.sessionId === currentSessionId);
+            document.getElementById('copyGroupLink')?.addEventListener('click', () => {
+                const group = allGroups.find(g => g.sessionId === currentSessionId);
                 if (group) {
                     navigator.clipboard?.writeText(group.link).then(() =>
                         toast('WhatsApp group link copied!', 'fa-copy', '#25D366')
@@ -1203,9 +1061,13 @@
                 b.addEventListener('click', async () => {
                     const participantId = b.dataset.id;
                     if (confirm('Remove this participant?')) {
-                        await DB.removeParticipant(currentSessionId, participantId);
-                        toast('Participant removed', 'fa-user-minus', '#e11d48');
-                        await render('dashboard');
+                        try {
+                            await API.deleteParticipant(currentSessionId, participantId);
+                            toast('Participant removed', 'fa-user-minus', '#e11d48');
+                            await render('dashboard');
+                        } catch (error) {
+                            toast('Error removing participant: ' + error.message, 'fa-times-circle', '#e11d48');
+                        }
                     }
                 });
             });
@@ -1223,9 +1085,13 @@
                 b.addEventListener('click', async () => {
                     const id = b.dataset.id;
                     if (confirm('Delete session (admin)?')) {
-                        await DB.deleteSession(id);
-                        toast('Session deleted by admin', 'fa-trash', '#e11d48');
-                        await render('admin');
+                        try {
+                            await API.deleteSession(id);
+                            toast('Session deleted by admin', 'fa-trash', '#e11d48');
+                            await render('admin');
+                        } catch (error) {
+                            toast('Error deleting session: ' + error.message, 'fa-times-circle', '#e11d48');
+                        }
                     }
                 });
             });
@@ -1234,13 +1100,12 @@
         // ============================================================
         // JOIN MODAL
         // ============================================================
-        async function showJoinModal(sessionId) {
-            const session = await DB.getSession(sessionId);
+        function showJoinModal(sessionId) {
+            const session = allSessions.find(s => s.sessionId === sessionId);
             if (!session) return;
 
-            const participants = await DB.getParticipants(sessionId);
-            const groups = await DB.getGroups();
-            const group = groups.find(g => g.sessionId === sessionId);
+            const participants = allParticipants[sessionId] || [];
+            const group = allGroups.find(g => g.sessionId === sessionId);
 
             const closed = participants.length >= session.target || session.status === 'closed';
             if (closed) {
@@ -1317,27 +1182,16 @@
                 }
 
                 try {
-                    const participantData = {
-                        _id: 'p_' + Date.now(),
-                        sessionId: sessionId,
+                    await API.addParticipant({
+                        sessionId,
                         fullName: name,
-                        phone: phone,
-                        country: country,
-                        joined: new Date().toISOString()
-                    };
+                        phone,
+                        country
+                    });
 
-                    await DB.addParticipant(participantData);
-
-                    // Update participant count and check if full
-                    const updatedParticipants = await DB.getParticipants(sessionId);
-                    if (updatedParticipants.length >= session.target) {
-                        await DB.updateSession(sessionId, { status: 'closed' });
-                        toast('🎉 Session full! VCF file is ready for download.', 'fa-check-circle', '#0b8a5e');
-                    }
-
-                    closeModal();
                     toast('Welcome to the session! Please join the WhatsApp group if you haven\'t.', 'fa-check',
                         '#0b8a5e');
+                    closeModal();
                     await render('home');
                 } catch (err) {
                     toast('Error joining: ' + err.message, 'fa-times-circle', '#e11d48');
@@ -1349,32 +1203,26 @@
         // INITIALIZATION
         // ============================================================
         (async function init() {
-            try {
-                // Initialize database connection
-                await initializeDatabase();
+            // Set theme label
+            document.getElementById('themeLabel').innerText = darkMode ? 'Light' : 'Dark';
 
-                // Set theme label
-                document.getElementById('themeLabel').innerText = darkMode ? 'Light' : 'Dark';
+            // Initial load
+            await loadAllData();
 
-                // Handle session link parameter
-                const params = new URLSearchParams(window.location.search);
-                const sid = params.get('session');
-                if (sid) {
-                    const session = await DB.getSession(sid);
-                    if (session) {
-                        currentSessionId = sid;
-                        setTimeout(() => render('dashboard'), 100);
-                        return;
-                    }
+            // Handle session link parameter
+            const params = new URLSearchParams(window.location.search);
+            const sid = params.get('session');
+            if (sid) {
+                const session = allSessions.find(s => s.sessionId === sid);
+                if (session) {
+                    currentSessionId = sid;
+                    setTimeout(() => render('dashboard'), 100);
+                    return;
                 }
-
-                await render('home');
-            } catch (error) {
-                console.error('Initialization error:', error);
-                toast('Failed to initialize. Please refresh.', 'fa-exclamation-triangle', '#e11d48');
-                await render('home');
             }
+
+            render('home');
         })();
     </script>
 </body>
-  </html>
+</html>
