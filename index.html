@@ -1,0 +1,1036 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5">
+  <title>Sage VCF · Contact exchange</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #f6f9fc;
+      color: #1e293b;
+      transition: background 0.3s, color 0.2s;
+      line-height: 1.5;
+    }
+    body.dark {
+      background: #0b1120;
+      color: #e8edf5;
+    }
+    .container { max-width: 1200px; margin: 0 auto; padding: 0 1.5rem; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      padding: 0.7rem 1.6rem; border-radius: 60px; border: none;
+      font-weight: 600; font-size: 0.95rem; cursor: pointer;
+      transition: all 0.2s; background: #2d3b4f; color: white;
+      text-decoration: none; box-shadow: 0 4px 10px rgba(0,0,0,0.03);
+    }
+    .btn-primary { background: #2563eb; color: white; }
+    .btn-primary:hover { background: #1d4ed8; transform: scale(0.97); }
+    .btn-outline { background: transparent; border: 1.5px solid #2563eb; color: #2563eb; }
+    .btn-outline:hover { background: #2563eb; color: white; }
+    .btn-danger { background: #dc2626; color: white; }
+    .btn-danger:hover { background: #b91c1c; }
+    .btn-success { background: #16a34a; color: white; }
+    .btn-success:hover { background: #15803d; }
+    .btn-sm { padding: 0.4rem 1rem; font-size: 0.8rem; }
+    .btn-block { width: 100%; justify-content: center; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+    .card {
+      background: rgba(255,255,255,0.5);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border-radius: 2rem;
+      padding: 1.8rem;
+      border: 1px solid rgba(255,255,255,0.3);
+      transition: 0.2s;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.02);
+    }
+    body.dark .card {
+      background: rgba(20,30,50,0.5);
+      border-color: rgba(255,255,255,0.05);
+    }
+    h1, h2, h3 { font-weight: 600; letter-spacing: -0.02em; }
+    .tag { background: #e2e8f0; padding: 0.2rem 0.8rem; border-radius: 40px; font-size: 0.7rem; font-weight: 600; }
+    body.dark .tag { background: #2d3b4f; }
+    .flex { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+    .flex-between { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+    .gap-2 { gap: 0.5rem; }
+    .mt-2 { margin-top: 1.5rem; }
+    .mt-3 { margin-top: 2.5rem; }
+    .mb-1 { margin-bottom: 1rem; }
+    .text-center { text-align: center; }
+    .text-muted { opacity: 0.7; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    @media (max-width: 700px) { .grid-2 { grid-template-columns: 1fr; } }
+    .hidden { display: none !important; }
+    #toast-container {
+      position: fixed; bottom: 20px; right: 20px; z-index: 9999;
+      display: flex; flex-direction: column; gap: 8px; max-width: 320px;
+    }
+    .toast {
+      background: #1e293b; color: white; padding: 0.9rem 1.5rem;
+      border-radius: 60px; box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+      animation: slideup 0.3s ease; font-weight: 500;
+    }
+    body.dark .toast { background: #2d3b4f; }
+    @keyframes slideup { from { opacity:0; transform: translateY(20px); } to { opacity:1; transform: translateY(0); } }
+    .loader { border: 4px solid #e2e8f0; border-top: 4px solid #2563eb; border-radius: 50%; width: 40px; height: 40px; animation: spin 0.8s linear infinite; margin: 2rem auto; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    #qrCode img { max-width: 140px; border-radius: 16px; background: white; padding: 6px; }
+    .progress-bar { background: #e2e8f0; border-radius: 40px; height: 8px; overflow: hidden; }
+    .progress-fill { background: #2563eb; height: 100%; border-radius: 40px; transition: width 0.3s; }
+    body.dark .progress-bar { background: #2d3b4f; }
+    #backTop {
+      position: fixed; bottom: 80px; right: 20px; background: #2563eb; color: white;
+      border: none; border-radius: 60px; padding: 0.7rem 1rem; box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+      cursor: pointer; transition: 0.2s; z-index: 999;
+    }
+    #backTop:hover { background: #1d4ed8; transform: scale(0.95); }
+    input, textarea, select {
+      font-family: inherit;
+      background: rgba(255,255,255,0.6);
+      border: 1px solid rgba(0,0,0,0.08);
+      border-radius: 1rem;
+      padding: 0.7rem 1rem;
+      transition: 0.2s;
+      outline: none;
+      width: 100%;
+    }
+    body.dark input, body.dark textarea, body.dark select {
+      background: rgba(30,40,60,0.6);
+      border-color: rgba(255,255,255,0.08);
+      color: #e8edf5;
+    }
+    input:focus, textarea:focus, select:focus {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+    }
+    label { font-weight: 600; font-size: 0.9rem; display: block; margin-bottom: 0.3rem; }
+    hr { border: none; border-top: 1px solid rgba(0,0,0,0.06); margin: 1.5rem 0; }
+    body.dark hr { border-color: rgba(255,255,255,0.06); }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .card, .btn, section { animation: fadeIn 0.4s ease; }
+    .error-box {
+      background: rgba(220, 38, 38, 0.1);
+      border: 1px solid #dc2626;
+      color: #dc2626;
+      padding: 1rem;
+      border-radius: 1rem;
+      margin-bottom: 1rem;
+    }
+    body.dark .error-box {
+      background: rgba(220, 38, 38, 0.2);
+    }
+    .session-list-item {
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .session-list-item:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+    }
+    body.dark .session-list-item:hover {
+      box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+    }
+    .token-input-group {
+      display: flex;
+      gap: 0.5rem;
+    }
+    .token-input-group input {
+      flex: 1;
+    }
+    .token-input-group button {
+      white-space: nowrap;
+    }
+    .phone-input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .phone-input-group select {
+      width: 100%;
+      padding: 0.7rem;
+      border-radius: 1rem;
+      border: 1px solid rgba(0,0,0,0.08);
+      background: rgba(255,255,255,0.6);
+      appearance: auto;
+      cursor: pointer;
+    }
+    body.dark .phone-input-group select {
+      background: rgba(30,40,60,0.6);
+      border-color: rgba(255,255,255,0.08);
+      color: #e8edf5;
+    }
+    .phone-input-group input {
+      width: 100%;
+    }
+    .join-warning {
+      background: rgba(220, 38, 38, 0.1);
+      border-left: 4px solid #dc2626;
+      padding: 0.8rem 1rem;
+      border-radius: 0.5rem;
+      margin: 0.5rem 0;
+    }
+    body.dark .join-warning {
+      background: rgba(220, 38, 38, 0.2);
+    }
+    .join-warning i {
+      color: #dc2626;
+      margin-right: 0.5rem;
+    }
+    .join-group-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+      padding: 1.5rem;
+    }
+    .join-group-overlay.active {
+      display: flex;
+    }
+    .join-group-modal {
+      max-width: 450px;
+      width: 100%;
+      background: white;
+      border-radius: 2rem;
+      padding: 2rem;
+      text-align: center;
+      animation: fadeIn 0.3s ease;
+      box-shadow: 0 25px 50px rgba(0,0,0,0.2);
+    }
+    body.dark .join-group-modal {
+      background: #1a2639;
+    }
+    .join-group-modal h3 {
+      margin-bottom: 0.5rem;
+    }
+    .join-group-modal .icon-large {
+      font-size: 4rem;
+      color: #25D366;
+      margin-bottom: 1rem;
+    }
+    .join-group-modal .btn-success {
+      font-size: 1.1rem;
+      padding: 0.8rem 2.5rem;
+      margin: 1rem 0;
+    }
+    .join-group-modal .skip-btn {
+      background: transparent;
+      border: none;
+      color: #dc2626;
+      cursor: pointer;
+      font-weight: 600;
+      padding: 0.5rem 1rem;
+      margin-top: 0.5rem;
+      transition: 0.2s;
+    }
+    .join-group-modal .skip-btn:hover {
+      opacity: 0.7;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
+    }
+  </style>
+</head>
+<body>
+  <div id="toast-container"></div>
+  <button id="backTop" class="hidden"><i class="fas fa-arrow-up"></i></button>
+
+  <!-- Join Group Overlay -->
+  <div id="joinGroupOverlay" class="join-group-overlay">
+    <div class="join-group-modal">
+      <div class="icon-large"><i class="fab fa-whatsapp"></i></div>
+      <h3>Join WhatsApp Group</h3>
+      <p class="text-muted">You must join the WhatsApp group before your contact can be added to this session.</p>
+      <a id="joinGroupLink" href="#" target="_blank" class="btn btn-success"><i class="fab fa-whatsapp"></i> Join WhatsApp Group</a>
+      <br>
+      <button id="skipJoinBtn" class="skip-btn"><i class="fas fa-times"></i> I haven't joined yet</button>
+      <br>
+      <button id="confirmJoinedBtn" class="btn btn-primary btn-sm mt-2" style="display:none;"><i class="fas fa-check"></i> I've joined, add me!</button>
+    </div>
+  </div>
+
+  <div id="app">
+    <nav class="container flex-between" style="padding: 1rem 1.5rem;">
+      <span style="font-weight: 700; font-size: 1.4rem; cursor: pointer;" onclick="showHome()"><i class="fas fa-id-card" style="color: #2563eb;"></i> Sage VCF</span>
+      <div class="flex gap-2">
+        <button id="themeToggle" class="btn btn-outline btn-sm"><i class="fas fa-moon"></i></button>
+        <button id="homeNav" class="btn btn-outline btn-sm"><i class="fas fa-home"></i></button>
+      </div>
+    </nav>
+
+    <div id="page-home" class="container" style="padding-top: 1rem;">
+      <section class="text-center" style="padding: 3rem 0;">
+        <h1 style="font-size: 2.8rem; font-weight: 700;">Exchange contacts<br>with <span style="color: #2563eb;">one VCF</span></h1>
+        <p style="font-size: 1.1rem; max-width: 600px; margin: 1rem auto; opacity: 0.8;">Communities, clubs, WhatsApp groups — create a session, share the link, and download all contacts in a single vCard file.</p>
+        <button id="createSessionBtn" class="btn btn-primary" style="padding: 0.9rem 2.5rem; font-size: 1.1rem;"><i class="fas fa-plus-circle"></i> Create Session</button>
+      </section>
+
+      <section style="padding: 1rem 0 2rem;">
+        <h2 class="text-center"><i class="fas fa-folder-open"></i> My Sessions</h2>
+        <div id="mySessionsContainer" class="mt-2">
+          <div class="card text-center text-muted">
+            <i class="fas fa-key" style="font-size: 2rem; opacity: 0.3;"></i>
+            <p>Enter your owner token to view your sessions</p>
+            <div class="token-input-group" style="max-width: 500px; margin: 1rem auto;">
+              <input id="ownerTokenInput" placeholder="Paste your owner token here..." style="flex:1;">
+              <button id="loadSessionsBtn" class="btn btn-primary"><i class="fas fa-search"></i> Load</button>
+            </div>
+            <small class="text-muted">Your owner token is shown when you create a session</small>
+          </div>
+          <div id="sessionsList" class="grid-2 mt-2"></div>
+        </div>
+      </section>
+
+      <div class="grid-2" style="margin: 2rem 0;">
+        <div class="card"><i class="fas fa-link" style="color: #2563eb; font-size: 1.8rem;"></i><h3>Unique join links</h3><p class="text-muted">Each session gets a private link & QR code.</p></div>
+        <div class="card"><i class="fas fa-shield-alt" style="color: #2563eb; font-size: 1.8rem;"></i><h3>Owner token</h3><p class="text-muted">Manage your session with a secure owner token.</p></div>
+        <div class="card"><i class="fas fa-users" style="color: #2563eb; font-size: 1.8rem;"></i><h3>Member limits</h3><p class="text-muted">Set a maximum and auto‑close when full.</p></div>
+        <div class="card"><i class="fas fa-file-download" style="color: #2563eb; font-size: 1.8rem;"></i><h3>Download .vcf</h3><p class="text-muted">Compatible with iPhone, Android, Outlook, Google.</p></div>
+      </div>
+      <section style="padding: 2rem 0;">
+        <h2 class="text-center">How it works</h2>
+        <div class="grid-2" style="margin-top: 1.5rem;">
+          <div class="card"><span class="tag">1</span><h3>Create session</h3><p>Set name, group link, max members, and your info.</p></div>
+          <div class="card"><span class="tag">2</span><h3>Share join link</h3><p>Members join the WhatsApp group, then submit their contact.</p></div>
+          <div class="card"><span class="tag">3</span><h3>Collect & export</h3><p>Owner downloads a single .vcf with all contacts.</p></div>
+          <div class="card"><span class="tag">4</span><h3>Manage</h3><p>Edit, close, or delete session anytime.</p></div>
+        </div>
+      </section>
+      <section style="padding: 1rem 0 3rem;">
+        <h2 class="text-center">FAQ</h2>
+        <div style="max-width: 700px; margin: 1.5rem auto;">
+          <div class="card mb-1"><strong>Is my data secure?</strong><p class="text-muted">Yes, all data is stored in Firebase Firestore with secure rules. Owner tokens are never exposed.</p></div>
+          <div class="card mb-1"><strong>Do I need an account?</strong><p class="text-muted">No. You create a session and receive a unique owner token.</p></div>
+          <div class="card"><strong>What if I lose my owner token?</strong><p class="text-muted">Keep it safe – it's the only way to manage your session.</p></div>
+        </div>
+      </section>
+      <footer class="text-center text-muted" style="padding: 2rem 0; border-top: 1px solid rgba(0,0,0,0.05);">
+        <p>Sage VCF · contact exchange · 2026</p>
+      </footer>
+    </div>
+
+    <div id="page-create" class="container hidden" style="padding: 1.5rem 0;">
+      <h2><i class="fas fa-pen-fancy"></i> Create a session</h2>
+      <div id="firebaseError" class="error-box hidden">
+        <i class="fas fa-exclamation-triangle"></i> 
+        <strong>Firebase Permission Error</strong><br>
+        Please update your Firestore security rules to "test mode" in the Firebase Console.
+        <br><br>
+        <small>Go to: Firebase Console → Firestore Database → Rules → Set to test mode</small>
+      </div>
+      <form id="createForm" class="card" style="max-width: 700px; margin: 1.5rem 0;">
+        <div class="grid-2">
+          <div><label>Session name *</label><input id="sessName" style="width:100%; padding:0.7rem;" placeholder="e.g. Office party 2026" required></div>
+          <div><label>Max members *</label><input id="sessMax" type="number" style="width:100%; padding:0.7rem;" placeholder="50" required></div>
+        </div>
+        <div><label>WhatsApp invite link *</label><input id="sessWhatsapp" style="width:100%; padding:0.7rem;" placeholder="https://chat.whatsapp.com/..." required></div>
+        <div><label>Description</label><input id="sessDesc" style="width:100%; padding:0.7rem;" placeholder="Optional description"></div>
+        <div class="grid-2">
+          <div><label>Your name *</label><input id="sessCreator" style="width:100%; padding:0.7rem;" placeholder="John Doe" required></div>
+          <div><label>Your contact *</label><input id="sessCreatorContact" style="width:100%; padding:0.7rem;" placeholder="+123456789" required></div>
+        </div>
+        <div><label>Expiry date (optional)</label><input id="sessExpiry" type="date" style="width:100%; padding:0.7rem;"></div>
+        <button type="submit" class="btn btn-primary btn-block mt-2"><i class="fas fa-rocket"></i> Generate Session</button>
+      </form>
+      <button id="backHomeFromCreate" class="btn btn-outline"><i class="fas fa-arrow-left"></i> Back</button>
+    </div>
+
+    <div id="page-session" class="container hidden" style="padding: 1.5rem 0;">
+      <div id="sessionView"></div>
+      <button id="backHomeFromSession" class="btn btn-outline mt-2"><i class="fas fa-arrow-left"></i> Home</button>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script>
+    // -------------------- YOUR FIREBASE CONFIG --------------------
+    const firebaseConfig = {
+      apiKey: "AIzaSyA2JK0a-OzCh0bR1yxSEWFZP4ZQQppExMA",
+      authDomain: "sage-vcf.firebaseapp.com",
+      projectId: "sage-vcf",
+      storageBucket: "sage-vcf.firebasestorage.app",
+      messagingSenderId: "2078037829",
+      appId: "1:2078037829:web:d06b7a503b3244a41a902c",
+      measurementId: "G-ZDFTWL570K"
+    };
+
+    // Initialize Firebase
+    let db = null;
+    let firebaseInitialized = false;
+
+    try {
+      firebase.initializeApp(firebaseConfig);
+      db = firebase.firestore();
+      firebaseInitialized = true;
+      console.log("✅ Firebase initialized successfully.");
+    } catch (err) {
+      console.error("❌ Firebase initialization error:", err);
+      showToast('⚠️ Firebase initialization failed: ' + err.message, true);
+    }
+
+    // -------------------- Country Codes --------------------
+    const countryCodes = [
+      { code: "+233", country: "🇬🇭 Ghana" },
+      { code: "+234", country: "🇳🇬 Nigeria" },
+      { code: "+254", country: "🇰🇪 Kenya" },
+      { code: "+256", country: "🇺🇬 Uganda" },
+      { code: "+255", country: "🇹🇿 Tanzania" },
+      { code: "+260", country: "🇿🇲 Zambia" },
+      { code: "+263", country: "🇿🇼 Zimbabwe" },
+      { code: "+27", country: "🇿🇦 South Africa" },
+      { code: "+1", country: "🇺🇸 USA/Canada" },
+      { code: "+44", country: "🇬🇧 UK" },
+      { code: "+91", country: "🇮🇳 India" },
+      { code: "+61", country: "🇦🇺 Australia" },
+      { code: "+49", country: "🇩🇪 Germany" },
+      { code: "+33", country: "🇫🇷 France" },
+      { code: "+39", country: "🇮🇹 Italy" },
+      { code: "+34", country: "🇪🇸 Spain" },
+      { code: "+55", country: "🇧🇷 Brazil" },
+      { code: "+52", country: "🇲🇽 Mexico" },
+      { code: "+81", country: "🇯🇵 Japan" },
+      { code: "+86", country: "🇨🇳 China" },
+      { code: "+82", country: "🇰🇷 South Korea" },
+      { code: "+971", country: "🇦🇪 UAE" },
+      { code: "+966", country: "🇸🇦 Saudi Arabia" },
+      { code: "+20", country: "🇪🇬 Egypt" },
+      { code: "+212", country: "🇲🇦 Morocco" },
+      { code: "+216", country: "🇹🇳 Tunisia" },
+      { code: "+351", country: "🇵🇹 Portugal" },
+      { code: "+31", country: "🇳🇱 Netherlands" },
+      { code: "+32", country: "🇧🇪 Belgium" },
+      { code: "+41", country: "🇨🇭 Switzerland" },
+      { code: "+46", country: "🇸🇪 Sweden" },
+      { code: "+47", country: "🇳🇴 Norway" },
+      { code: "+45", country: "🇩🇰 Denmark" },
+      { code: "+358", country: "🇫🇮 Finland" },
+      { code: "+64", country: "🇳🇿 New Zealand" },
+      { code: "+60", country: "🇲🇾 Malaysia" },
+      { code: "+65", country: "🇸🇬 Singapore" },
+      { code: "+66", country: "🇹🇭 Thailand" },
+      { code: "+62", country: "🇮🇩 Indonesia" },
+      { code: "+63", country: "🇵🇭 Philippines" },
+      { code: "+84", country: "🇻🇳 Vietnam" },
+    ];
+
+    // -------------------- state --------------------
+    let currentSessionId = null;
+    let ownerToken = localStorage.getItem('sageOwnerToken') || null;
+    let sessionData = null;
+    let pendingJoinData = null;
+
+    // DOM refs
+    const $ = id => document.getElementById(id);
+    const homePage = $('page-home');
+    const createPage = $('page-create');
+    const sessionPage = $('page-session');
+    const sessionView = $('sessionView');
+    const toastContainer = $('toast-container');
+    const backTop = $('backTop');
+    const firebaseError = $('firebaseError');
+    const sessionsList = $('sessionsList');
+    const ownerTokenInput = $('ownerTokenInput');
+    const loadSessionsBtn = $('loadSessionsBtn');
+    const joinGroupOverlay = $('joinGroupOverlay');
+    const joinGroupLink = $('joinGroupLink');
+    const skipJoinBtn = $('skipJoinBtn');
+    const confirmJoinedBtn = $('confirmJoinedBtn');
+
+    // -------------------- helpers --------------------
+    function showToast(msg, isError = false) {
+      const t = document.createElement('div');
+      t.className = 'toast';
+      t.style.background = isError ? '#b91c1c' : '#1e293b';
+      t.textContent = msg;
+      toastContainer.appendChild(t);
+      setTimeout(() => { 
+        if (t.parentNode) t.remove(); 
+      }, 4000);
+    }
+
+    function sanitize(s) { return s ? s.trim().replace(/[<>]/g, '') : ''; }
+
+    function generateId() { return Math.random().toString(36).substring(2, 10) + Date.now().toString(36); }
+
+    function saveOwnerToken(token) {
+      if (token) {
+        localStorage.setItem('sageOwnerToken', token);
+        ownerToken = token;
+      }
+    }
+
+    function createCountryDropdown(selectedValue = '') {
+      let html = `<select id="jCountryCode" class="country-select">`;
+      countryCodes.forEach(c => {
+        const selected = c.code === selectedValue ? 'selected' : '';
+        html += `<option value="${c.code}" ${selected}>${c.country} (${c.code})</option>`;
+      });
+      html += `</select>`;
+      return html;
+    }
+
+    // -------------------- pages --------------------
+    function showHome() { 
+      hideAllPages(); 
+      homePage.classList.remove('hidden');
+      if (ownerToken) {
+        loadSessions(ownerToken);
+      }
+    }
+    function showCreate() { 
+      hideAllPages(); 
+      createPage.classList.remove('hidden');
+      if (firebaseInitialized) {
+        db.collection('sessions').limit(1).get().catch(() => {
+          firebaseError.classList.remove('hidden');
+        });
+      }
+    }
+    function showSessionView() { hideAllPages(); sessionPage.classList.remove('hidden'); }
+
+    function hideAllPages() {
+      [homePage, createPage, sessionPage].forEach(p => p.classList.add('hidden'));
+    }
+
+    // -------------------- theme --------------------
+    let dark = localStorage.getItem('sageTheme') === 'dark';
+    if (dark) document.body.classList.add('dark');
+    $('themeToggle').addEventListener('click', ()=>{
+      dark = !dark;
+      document.body.classList.toggle('dark');
+      localStorage.setItem('sageTheme', dark ? 'dark' : 'light');
+      $('themeToggle').innerHTML = dark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+    });
+
+    // -------------------- navigation --------------------
+    $('createSessionBtn').addEventListener('click', showCreate);
+    $('backHomeFromCreate').addEventListener('click', showHome);
+    $('backHomeFromSession').addEventListener('click', showHome);
+    $('homeNav').addEventListener('click', showHome);
+
+    window.addEventListener('scroll', ()=>{
+      if (window.scrollY > 400) backTop.classList.remove('hidden');
+      else backTop.classList.add('hidden');
+    });
+    backTop.addEventListener('click', ()=> window.scrollTo({top:0, behavior:'smooth'}));
+
+    // -------------------- load owner sessions --------------------
+    async function loadSessions(token) {
+      if (!firebaseInitialized || !db) {
+        sessionsList.innerHTML = '<p class="text-muted">Firebase not initialized.</p>';
+        return;
+      }
+
+      sessionsList.innerHTML = '<div class="loader"></div>';
+      try {
+        const snapshot = await db.collection('sessions')
+          .where('ownerToken', '==', token)
+          .get();
+        
+        if (snapshot.empty) {
+          sessionsList.innerHTML = `
+            <div class="card text-center text-muted" style="grid-column:1/-1;">
+              <i class="fas fa-inbox" style="font-size: 2rem; opacity: 0.3;"></i>
+              <p>No sessions found with this token.</p>
+              <button onclick="showCreate()" class="btn btn-primary btn-sm mt-2">
+                <i class="fas fa-plus"></i> Create your first session
+              </button>
+            </div>
+          `;
+          return;
+        }
+
+        let html = '';
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          const members = data.members || [];
+          const filled = members.length;
+          const max = data.max || 0;
+          const isFull = filled >= max;
+          const closed = data.closed || false;
+          
+          html += `
+            <div class="card session-list-item" onclick="openSession('${doc.id}', '${token}')">
+              <div class="flex-between">
+                <h3>${data.name}</h3>
+                <span class="tag">${closed ? '🔒 Closed' : (isFull ? '🔴 Full' : '🟢 Open')}</span>
+              </div>
+              <p class="text-muted">${data.desc || 'No description'}</p>
+              <div class="flex gap-2">
+                <span><i class="fas fa-users"></i> ${filled}/${max}</span>
+                <span><i class="fas fa-calendar-alt"></i> ${data.expiry || 'No expiry'}</span>
+              </div>
+              <div class="progress-bar"><div class="progress-fill" style="width:${max? (filled/max)*100 : 0}%;"></div></div>
+              <small class="text-muted">Click to manage</small>
+            </div>
+          `;
+        });
+        sessionsList.innerHTML = html;
+      } catch(err) {
+        sessionsList.innerHTML = `<p class="text-muted">Error loading sessions: ${err.message}</p>`;
+        console.error('Load sessions error:', err);
+      }
+    }
+
+    loadSessionsBtn.addEventListener('click', () => {
+      const token = sanitize(ownerTokenInput.value);
+      if (!token) {
+        showToast('Please enter your owner token.', true);
+        return;
+      }
+      saveOwnerToken(token);
+      loadSessions(token);
+    });
+
+    ownerTokenInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        loadSessionsBtn.click();
+      }
+    });
+
+    window.openSession = async (sessionId, token) => {
+      currentSessionId = sessionId;
+      ownerToken = token;
+      saveOwnerToken(token);
+      await loadSession(sessionId, token);
+      showSessionView();
+    };
+
+    // -------------------- create session --------------------
+    $('createForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      if (!firebaseInitialized || !db) {
+        showToast('⚠️ Firebase not configured.', true);
+        return;
+      }
+
+      const name = sanitize($('sessName').value);
+      const max = parseInt($('sessMax').value);
+      const whatsapp = sanitize($('sessWhatsapp').value);
+      const desc = sanitize($('sessDesc').value);
+      const creator = sanitize($('sessCreator').value);
+      const creatorContact = sanitize($('sessCreatorContact').value);
+      const expiry = $('sessExpiry').value || null;
+      
+      if (!name || !max || !whatsapp || !creator || !creatorContact) {
+        showToast('Please fill all required fields.', true); 
+        return;
+      }
+      if (max < 1) { 
+        showToast('Max members must be at least 1.', true); 
+        return; 
+      }
+      
+      const sessionId = generateId();
+      const token = generateId() + generateId();
+      
+      const data = {
+        sessionId, 
+        name, 
+        max, 
+        whatsapp, 
+        desc, 
+        creator, 
+        creatorContact, 
+        expiry,
+        ownerToken: token, 
+        members: [], 
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        closed: false
+      };
+      
+      try {
+        await db.collection('sessions').doc(sessionId).set(data);
+        showToast('✅ Session created! Token saved to browser.');
+        saveOwnerToken(token);
+        currentSessionId = sessionId;
+        await loadSession(sessionId, token);
+        showSessionView();
+      } catch(err) { 
+        if (err.code === 'permission-denied') {
+          showToast('❌ Permission Error: Please update Firestore security rules to test mode.', true);
+          firebaseError.classList.remove('hidden');
+        } else {
+          showToast('❌ Error: '+err.message, true);
+        }
+        console.error('Create session error:', err);
+      }
+    });
+
+    // -------------------- load session (owner or join) --------------------
+    async function loadSession(sessionId, token = null) {
+      if (!firebaseInitialized || !db) {
+        sessionView.innerHTML = '<p class="card">⚠️ Firebase not configured.</p>';
+        return;
+      }
+
+      sessionView.innerHTML = '<div class="loader"></div>';
+      try {
+        const doc = await db.collection('sessions').doc(sessionId).get();
+        if (!doc.exists) { 
+          sessionView.innerHTML = '<p class="card">❌ Session not found.</p>'; 
+          return; 
+        }
+        const data = doc.data();
+        sessionData = data;
+        const isOwner = token && token === data.ownerToken;
+        const members = data.members || [];
+        const max = data.max || 0;
+        const filled = members.length;
+        const closed = data.closed || false;
+        const isFull = filled >= max;
+
+        let html = `<div class="card" style="max-width: 800px; margin:0 auto;">
+          <div class="flex-between"><h2>${data.name}</h2><span class="tag">${isOwner ? '🔑 Owner' : '👤 Member'}</span></div>
+          <p>${data.desc || ''}</p>
+          <div class="flex gap-2"><span><i class="fas fa-users"></i> ${filled}/${max}</span><span><i class="fas fa-calendar-alt"></i> ${data.expiry || 'No expiry'}</span></div>
+          <div class="progress-bar"><div class="progress-fill" style="width:${max? (filled/max)*100 : 0}%;"></div></div>
+          <div class="flex gap-2 mt-2">
+            <span class="tag">${isFull ? '🔴 Full' : '🟢 Open'}</span>
+            ${closed ? '<span class="tag" style="background:#dc2626;color:white;">Closed by owner</span>' : ''}
+          </div>`;
+
+        if (!closed && !isFull) {
+          const joinLink = window.location.origin + window.location.pathname + '?join=' + sessionId;
+          html += `<div class="flex gap-2 mt-2"><input id="joinLinkInput" class="card" value="${joinLink}" readonly style="flex:1; padding:0.5rem;"><button class="btn btn-sm btn-primary" onclick="copyLink('${joinLink}')"><i class="fas fa-copy"></i></button>
+          <button class="btn btn-sm btn-outline" onclick="shareLink('${joinLink}')"><i class="fas fa-share-alt"></i></button></div>
+          <div id="qrCode" class="mt-2"></div>`;
+          setTimeout(()=>{
+            const qrDiv = document.getElementById('qrCode');
+            if (qrDiv) qrDiv.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(joinLink)}" alt="QR">`;
+          }, 50);
+        } else {
+          html += `<p class="text-muted mt-2">${closed ? '🔒 Session closed.' : '📊 Maximum capacity reached.'}</p>`;
+        }
+
+        // Join form - simplified, no checkbox
+        if (!isOwner && !closed && !isFull) {
+          html += `
+            <hr>
+            <div class="join-warning">
+              <i class="fas fa-exclamation-circle"></i>
+              <strong>⚠️ Important:</strong> You must join the WhatsApp group before your contact can be added.
+            </div>
+            
+            <h3>Submit your contact</h3>
+            <form id="joinForm" style="margin-top:0.5rem;">
+              <div class="grid-2">
+                <div><input id="jName" style="width:100%;padding:0.7rem;" placeholder="Full name *" required></div>
+                <div>
+                  <div class="phone-input-group">
+                    <label style="font-size:0.8rem;opacity:0.7;">Select your country</label>
+                    ${createCountryDropdown()}
+                    <label style="font-size:0.8rem;opacity:0.7;">Phone number *</label>
+                    <input id="jPhone" placeholder="Enter number without 0 (e.g. 501234567)" required>
+                    <small class="text-muted">Don't include the leading zero</small>
+                  </div>
+                </div>
+              </div>
+              <button type="submit" class="btn btn-primary btn-block mt-2"><i class="fas fa-user-plus"></i> Join Session</button>
+            </form>
+          `;
+        }
+
+        // owner dashboard
+        if (isOwner) {
+          html += `<hr><div class="grid-2">
+            <button class="btn btn-sm btn-primary" onclick="downloadVCF('${sessionId}')"><i class="fas fa-file-download"></i> Download .vcf</button>
+            <button class="btn btn-sm btn-outline" onclick="editSession('${sessionId}')"><i class="fas fa-edit"></i> Edit</button>
+            <button class="btn btn-sm btn-danger" onclick="closeSession('${sessionId}')"><i class="fas fa-door-closed"></i> Close</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteSession('${sessionId}')"><i class="fas fa-trash"></i> Delete</button>
+          </div>
+          <div class="mt-2"><h4>👥 Members (${members.length})</h4>
+          <div id="memberList" style="max-height:300px;overflow-y:auto;">`;
+          if (members.length === 0) {
+            html += `<p class="text-muted">No members yet. Share the join link!</p>`;
+          } else {
+            members.forEach((m, idx) => {
+              html += `<div class="card" style="padding:0.5rem 1rem;margin:0.3rem 0;display:flex;justify-content:space-between;flex-wrap:wrap;">
+                <span><strong>${m.name}</strong> · ${m.country || 'N/A'} · ${m.phone}</span>
+                <button class="btn btn-sm btn-danger" onclick="removeMember('${sessionId}', ${idx})"><i class="fas fa-user-minus"></i></button>
+              </div>`;
+            });
+          }
+          html += `</div></div>`;
+        }
+
+        // public member list
+        if (!isOwner && members.length > 0) {
+          html += `<hr><h4>👥 Members (${members.length})</h4><div style="max-height:200px;overflow-y:auto;">`;
+          members.forEach(m => {
+            html += `<div class="card" style="padding:0.4rem 1rem;margin:0.2rem 0;"><strong>${m.name}</strong> ${m.country ? '· '+m.country : ''}</div>`;
+          });
+          html += `</div>`;
+        }
+
+        html += `</div>`;
+        sessionView.innerHTML = html;
+
+        // attach join form listener
+        const joinForm = document.getElementById('joinForm');
+        if (joinForm) {
+          joinForm.addEventListener('submit', async (ev) => {
+            ev.preventDefault();
+            
+            const name = sanitize($('jName').value);
+            const countryCode = $('jCountryCode').value;
+            const phoneRaw = sanitize($('jPhone').value);
+            
+            if (!name || !phoneRaw) { 
+              showToast('Name and phone number required.', true); 
+              return; 
+            }
+            
+            let phoneClean = phoneRaw.replace(/^0+/, '').replace(/[^0-9]/g, '');
+            if (!phoneClean || phoneClean.length < 4) {
+              showToast('Please enter a valid phone number (at least 4 digits).', true);
+              return;
+            }
+            
+            const fullPhone = countryCode + phoneClean;
+            
+            if (members.some(m => m.phone === fullPhone)) { 
+              showToast('Phone already in this session.', true); 
+              return; 
+            }
+            
+            // Store pending data and show the join group overlay
+            pendingJoinData = {
+              name,
+              phone: fullPhone,
+              country: countryCode,
+              sessionId,
+              token
+            };
+            
+            // Show the overlay with the WhatsApp link
+            joinGroupLink.href = data.whatsapp || '#';
+            joinGroupOverlay.classList.add('active');
+            confirmJoinedBtn.style.display = 'none';
+            skipJoinBtn.style.display = 'inline-block';
+          });
+        }
+      } catch(err) {
+        sessionView.innerHTML = `<p class="card">❌ Error loading session: ${err.message}</p>`;
+        console.error('Load session error:', err);
+      }
+    }
+
+    // -------------------- Join Group Overlay Handlers --------------------
+    skipJoinBtn.addEventListener('click', () => {
+      joinGroupOverlay.classList.remove('active');
+      showToast('⚠️ Please join the WhatsApp group to be added.', true);
+      pendingJoinData = null;
+    });
+
+    confirmJoinedBtn.addEventListener('click', async () => {
+      if (!pendingJoinData) return;
+      
+      joinGroupOverlay.classList.remove('active');
+      
+      try {
+        const { name, phone, country, sessionId, token } = pendingJoinData;
+        
+        await db.collection('sessions').doc(sessionId).update({
+          members: firebase.firestore.FieldValue.arrayUnion({ 
+            name, 
+            phone,
+            country,
+            joinedAt: new Date().toISOString() 
+          })
+        });
+        
+        showToast('✅ You joined the session!');
+        pendingJoinData = null;
+        loadSession(sessionId, token);
+      } catch(err) { 
+        if (err.code === 'permission-denied') {
+          showToast('❌ Permission Error: Please update Firestore security rules.', true);
+        } else {
+          showToast('❌ Error: '+err.message, true);
+        }
+        console.error('Join error:', err);
+      }
+    });
+
+    // When user clicks the WhatsApp link, show the confirmation button
+    joinGroupLink.addEventListener('click', () => {
+      // Show the confirm button after they've clicked the WhatsApp link
+      setTimeout(() => {
+        confirmJoinedBtn.style.display = 'inline-block';
+        skipJoinBtn.style.display = 'none';
+      }, 500);
+    });
+
+    // Close overlay if user clicks outside
+    joinGroupOverlay.addEventListener('click', (e) => {
+      if (e.target === joinGroupOverlay) {
+        joinGroupOverlay.classList.remove('active');
+        showToast('⚠️ Please join the WhatsApp group to be added.', true);
+        pendingJoinData = null;
+      }
+    });
+
+    // -------------------- owner actions --------------------
+    window.copyLink = (link) => {
+      navigator.clipboard.writeText(link);
+      showToast('📋 Link copied!');
+    };
+
+    window.downloadVCF = async (sessionId) => {
+      try {
+        const doc = await db.collection('sessions').doc(sessionId).get();
+        const data = doc.data();
+        if (!data) {
+          showToast('Session not found.', true);
+          return;
+        }
+        const members = data.members || [];
+        if (members.length === 0) {
+          showToast('No contacts to download.', true);
+          return;
+        }
+        
+        let vcf = 'BEGIN:VCARD\nVERSION:3.0\n';
+        members.forEach(m => {
+          vcf += `FN:${m.name}\n`;
+          vcf += `TEL:${m.phone}\n`;
+          if (m.country) vcf += `ADR:;;;${m.country};;\n`;
+          vcf += 'END:VCARD\n';
+        });
+        
+        const blob = new Blob([vcf], {type: 'text/vcard'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); 
+        a.href = url; 
+        a.download = `${data.name.replace(/\s+/g, '_')}_contacts.vcf`; 
+        document.body.appendChild(a); 
+        a.click(); 
+        a.remove();
+        URL.revokeObjectURL(url);
+        showToast(`✅ VCF downloaded with ${members.length} contacts.`);
+      } catch(e) { 
+        showToast('❌ Error: '+e.message, true); 
+        console.error('Download error:', e);
+      }
+    };
+
+    window.editSession = async (sessionId) => {
+      const newMax = prompt('New max members?', sessionData?.max || 50);
+      if (newMax && parseInt(newMax) > 0) {
+        try {
+          await db.collection('sessions').doc(sessionId).update({ max: parseInt(newMax) });
+          showToast('✅ Updated.');
+          loadSession(sessionId, ownerToken);
+        } catch(e) {
+          if (e.code === 'permission-denied') {
+            showToast('❌ Permission Error: Please update Firestore security rules.', true);
+          } else {
+            showToast('❌ Error: '+e.message, true);
+          }
+          console.error('Edit error:', e);
+        }
+      }
+    };
+
+    window.closeSession = async (sessionId) => {
+      if (confirm('Close session? No more entries allowed.')) {
+        try {
+          await db.collection('sessions').doc(sessionId).update({ closed: true });
+          showToast('✅ Session closed.');
+          loadSession(sessionId, ownerToken);
+        } catch(e) {
+          if (e.code === 'permission-denied') {
+            showToast('❌ Permission Error: Please update Firestore security rules.', true);
+          } else {
+            showToast('❌ Error: '+e.message, true);
+          }
+          console.error('Close error:', e);
+        }
+      }
+    };
+
+    window.deleteSession = async (sessionId) => {
+      if (confirm('Delete session permanently? This cannot be undone.')) {
+        try {
+          await db.collection('sessions').doc(sessionId).delete();
+          showToast('✅ Session deleted.');
+          showHome();
+        } catch(e) {
+          if (e.code === 'permission-denied') {
+            showToast('❌ Permission Error: Please update Firestore security rules.', true);
+          } else {
+            showToast('❌ Error: '+e.message, true);
+          }
+          console.error('Delete error:', e);
+        }
+      }
+    };
+
+    window.removeMember = async (sessionId, idx) => {
+      if (!confirm('Remove this member?')) return;
+      try {
+        const doc = await db.collection('sessions').doc(sessionId).get();
+        const members = doc.data().members || [];
+        if (idx >= members.length) return;
+        members.splice(idx, 1);
+        await db.collection('sessions').doc(sessionId).update({ members });
+        showToast('✅ Member removed.');
+        loadSession(sessionId, ownerToken);
+      } catch(e) {
+        if (e.code === 'permission-denied') {
+          showToast('❌ Permission Error: Please update Firestore security rules.', true);
+        } else {
+          showToast('❌ Error: '+e.message, true);
+        }
+        console.error('Remove error:', e);
+      }
+    };
+
+    window.shareLink = (link) => {
+      if (navigator.share) {
+        navigator.share({title: 'Join session', text: 'Join my contact exchange', url: link});
+      } else {
+        navigator.clipboard.writeText(link);
+        showToast('📋 Link copied!');
+      }
+    };
+
+    // -------------------- route on load --------------------
+    (async function init() {
+      const params = new URLSearchParams(window.location.search);
+      const joinId = params.get('join');
+      const tokenParam = params.get('token');
+      if (joinId) {
+        currentSessionId = joinId;
+        if (tokenParam) ownerToken = tokenParam;
+        await loadSession(joinId, tokenParam);
+        showSessionView();
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } else {
+        showHome();
+      }
+    })();
+  </script>
+</body>
+</html>
